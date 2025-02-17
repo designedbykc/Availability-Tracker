@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beschikbaarheidstool</title>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.js"></script>
+    <style>
+        body {
+            text-align: center;
+            background-color: #f8f9fc;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            font-family: sans-serif;
+        }
+        .header {
+            font-size: 26px;
+            font-weight: bold;
+            text-align: center;
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 30px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        #calendar-container {
+            width: 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        #calendar {
+            width: 100%;
+            min-height: 450px;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            width: 420px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .date-list-container {
+            flex-grow: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 50px;
+            max-height: 300px;
+            width: 100%;
+            background: #f9f9f9;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .date-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+        }
+        .date-list li {
+            background: #e3e8ff;
+            padding: 8px 10px;
+            margin: 3px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #333;
+        }
+        .remove-date {
+            background: none;
+            border: none;
+            color: red;
+            font-weight: bold;
+            cursor: pointer;
+            width: 20px;
+        }
+        .buttons-container {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .copy-button, .reset-button {
+            background: #41b883;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 48%;
+            text-align: center;
+        }
+        .reset-button {
+            background: #e63946;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            #calendar-container, .sidebar {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">Availability Tracker</div>
+    <div class="container">
+        <div id="calendar-container">
+            <div id="calendar"></div>
+        </div>
+        <div class="sidebar">
+            <div class="date-list-container">
+                <ul id="selected-dates" class="date-list"></ul>
+            </div>
+            <div class="buttons-container">
+                <button class="copy-button" id="copy-button">Copy</button>
+                <button class="reset-button" id="reset-button">Reset</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let calendarEl = document.getElementById('calendar');
+            let selectedDates = new Set();
+            let copyButton = document.getElementById('copy-button');
+            let resetButton = document.getElementById('reset-button');
+
+            let calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                selectable: true,
+                validRange: { start: new Date() },
+                dateClick: function(info) {
+                    let clickedDate = info.dateStr;
+                    if (selectedDates.has(clickedDate)) {
+                        selectedDates.delete(clickedDate);
+                    } else {
+                        selectedDates.add(clickedDate);
+                    }
+                    updateUI();
+                },
+                datesSet: function() {
+                    updateCalendarHighlights();
+                }
+            });
+            calendar.render();
+
+            function updateCalendarHighlights() {
+                document.querySelectorAll('.fc-daygrid-day').forEach(el => {
+                    let date = el.getAttribute('data-date');
+                    el.style.backgroundColor = selectedDates.has(date) ? '#b2dfb2' : '';
+                });
+            }
+
+            function updateDateList() {
+                let dateListEl = document.getElementById('selected-dates');
+                dateListEl.innerHTML = '';
+                selectedDates.forEach(date => {
+                    let formattedDate = new Date(date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                    let listItem = document.createElement('li');
+                    listItem.innerHTML = `${formattedDate} <button class="remove-date" onclick="removeDate('${date}')">×</button>`;
+                    dateListEl.appendChild(listItem);
+                });
+            }
+
+            function updateUI() {
+                updateDateList();
+                updateCalendarHighlights();
+            }
+
+            window.removeDate = function(date) {
+                selectedDates.delete(date);
+                updateUI();
+            };
+
+            copyButton.addEventListener('click', function() {
+                let dateText = [...selectedDates].map(date => new Date(date).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })).join('\n');
+                navigator.clipboard.writeText(dateText).then(() => {
+                    copyButton.textContent = 'Copied!';
+                    setTimeout(() => { copyButton.textContent = 'Copy'; }, 2000);
+                });
+            });
+
+            resetButton.addEventListener('click', function() {
+                if (confirm('Are you sure?')) {
+                    selectedDates.clear();
+                    updateUI();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
